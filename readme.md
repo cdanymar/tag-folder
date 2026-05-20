@@ -16,3 +16,6 @@ Run `install.bat`.
 2. Select 'Tag Folder' option.
 3. Enter your tag.
 4. Click OK.
+
+## License
+**MIT**.
