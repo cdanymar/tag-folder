@@ -1,5 +1,19 @@
-function Read-IniFile($Filename, $Section, $Key, $DefaultValue) {
-    if (-not (Test-Path $Filename)) {
+function Read-IniFile {
+    param (
+        [Parameter(Mandatory)]
+        [string]$Filename,
+
+        [string]$Section = '',
+
+        [Parameter(Mandatory)]
+        [string]$Key,
+
+        [string]$DefaultValue = ''
+    );
+
+    $DefaultValue = $DefaultValue.Trim();
+
+    if (-not (Test-Path -Path $Filename -PathType Leaf)) {
         return $DefaultValue;
     }
 
@@ -10,12 +24,15 @@ function Read-IniFile($Filename, $Section, $Key, $DefaultValue) {
                 return $DefaultValue;
             }
 
-            $line = $Matches[1];
+            $line = $Matches[1].Trim();
             continue;
         }
         '^([^=;#]+?)\s*=\s*(.*)$' {
-            if ($line -eq $Section -and $Matches[1] -eq $Key) {
-                return $Matches[2] -replace '\s*;.*$';
+            if ($line -eq $Section -and $Matches[1].Trim() -eq $Key) {
+                $value = $Matches[2].Trim() -replace '\s*[;#].*$';
+                $value = $value -replace '^(["''])(.*)\1$', '$2';
+
+                return $value;
             }
         }
     }
@@ -23,7 +40,20 @@ function Read-IniFile($Filename, $Section, $Key, $DefaultValue) {
     return $DefaultValue;
 }
 
-function Write-IniFile($Filename, $Section, $Key, $Value) {
+function Write-IniFile {
+    param (
+        [Parameter(Mandatory)]
+        [string]$Filename,
+
+        [string]$Section = '',
+
+        [Parameter(Mandatory)]
+        [string]$Key,
+
+        [Parameter(Mandatory)]
+        [string]$Value
+    );
+
     if (Test-Path $Filename) {
         $lines = [System.Collections.Generic.List[string]](Get-Content $Filename);
     }
@@ -70,7 +100,11 @@ function Write-IniFile($Filename, $Section, $Key, $Value) {
     Set-Content -Path $Filename -Value $lines;
 }
 
-function Show-TagDialog($InitialValue) {
+function Show-TagDialog {
+    param (
+        [string]$InitialValue = ''
+    );
+
     Add-Type -AssemblyName System.Windows.Forms;
     Add-Type -AssemblyName System.Drawing;
 
@@ -117,13 +151,18 @@ function Show-TagDialog($InitialValue) {
     $tag = $textBox.Text.Trim();
     $form.Dispose();
 
-    return [PSCustomObject]@{
+    return @{
         Result = $dialogResult;
         Tag = $tag;
     };
 }
 
-function Set-FolderTag($FolderPath) {
+function Set-FolderTag {
+    param (
+        [Parameter(Mandatory)]
+        [string]$FolderPath
+    );
+
     $iniPath = Join-Path $FolderPath 'desktop.ini';
     $section = '{F29F85E0-4FF9-1068-AB91-08002B27B3D9}';
     $key = 'Prop5';
@@ -138,11 +177,12 @@ function Set-FolderTag($FolderPath) {
 
     $response = Show-TagDialog $currentTag;
     if ($response.Result -eq 'OK') {
-        Write-IniFile $iniPath $section $key "31,$($response.Tag)";
+        Write-IniFile $iniPath $section $key "31,$( $response.Tag )";
 
         attrib +h +s $iniPath;
         attrib +s $FolderPath;
     }
 }
+
 
 Set-FolderTag $args[0];
